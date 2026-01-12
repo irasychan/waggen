@@ -182,4 +182,17 @@ export class StateManager {
       totalExploredActions,
     };
   }
+
+  // Restore a state from a saved session
+  restoreState(state: AppState): void {
+    if (!this.states.has(state.id)) {
+      this.states.set(state.id, state);
+      this.exploredActions.set(state.id, new Set());
+      // Update counter to avoid ID conflicts
+      const stateNum = parseInt(state.id.replace('state_', ''), 10);
+      if (!isNaN(stateNum) && stateNum >= this.stateCounter) {
+        this.stateCounter = stateNum;
+      }
+    }
+  }
 }

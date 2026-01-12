@@ -129,4 +129,74 @@ program
     }
   });
 
+program
+  .command('ui')
+  .description('Launch interactive state graph visualization')
+  .requiredOption('-f, --file <path>', 'Path to the state graph JSON file')
+  .option('-p, --port <number>', 'Port to serve UI on', '8080')
+  .option('--no-open', 'Do not automatically open browser')
+  .action(async (options) => {
+    console.log('\n📊 Waggen - Interactive State Graph Viewer\n');
+
+    try {
+      const { UIServer } = await import('./ui/UIServer');
+      const server = new UIServer({
+        graphFile: options.file,
+        port: parseInt(options.port, 10),
+        openBrowser: options.open !== false,
+      });
+
+      await server.start();
+
+      // Keep server running until interrupted
+      process.on('SIGINT', () => {
+        server.stop();
+        process.exit(0);
+      });
+
+    } catch (error) {
+      console.error('Error starting UI server:', error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('interactive')
+  .description('Launch interactive exploration mode with live browser control')
+  .requiredOption('-u, --url <url>', 'URL of the web application to explore')
+  .option('-p, --port <number>', 'Port for interactive UI server', '8080')
+  .option('-s, --session <path>', 'Resume from saved session file')
+  .option('-o, --output <path>', 'Output path for final graph JSON', './output/interactive-graph.json')
+  .option('--no-open', 'Do not automatically open browser')
+  .action(async (options) => {
+    console.log('\n🎮 Waggen - Interactive Exploration Mode\n');
+
+    try {
+      const { InteractiveServer } = await import('./ui/InteractiveServer');
+      const server = new InteractiveServer({
+        url: options.url,
+        port: parseInt(options.port, 10),
+        sessionFile: options.session,
+        outputPath: options.output,
+        openBrowser: options.open !== false,
+      });
+
+      await server.start();
+
+      console.log('Browser window opened - you can see the application being explored');
+      console.log('Press Ctrl+C to end exploration and save the graph.\n');
+
+      // Handle graceful shutdown
+      process.on('SIGINT', async () => {
+        console.log('\nSaving exploration results...');
+        await server.saveAndExit(options.output);
+        process.exit(0);
+      });
+
+    } catch (error) {
+      console.error('Error starting interactive mode:', error);
+      process.exit(1);
+    }
+  });
+
 program.parse();
