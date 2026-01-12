@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Todo App - Waggen Sample</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Todo List</h1>
+
+    <form id="todo-form" data-testid="todo-form">
+      <input
+        type="text"
+        id="todo-input"
+        data-testid="todo-input"
+        placeholder="What needs to be done?"
+        autocomplete="off"
+      >
+      <button type="submit" id="add-btn" data-testid="add-btn">Add</button>
+    </form>
+
+    <div id="filters" class="filters" data-testid="filters">
+      <button class="filter-btn active" data-filter="all" data-testid="filter-all">All</button>
+      <button class="filter-btn" data-filter="active" data-testid="filter-active">Active</button>
+      <button class="filter-btn" data-filter="completed" data-testid="filter-completed">Completed</button>
+    </div>
+
+    <ul id="todo-list" data-testid="todo-list"></ul>
+
+    <div id="footer" class="footer" data-testid="footer" style="display: none;">
+      <span id="items-left" data-testid="items-left">0 items left</span>
+      <button id="clear-completed" data-testid="clear-completed">Clear completed</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

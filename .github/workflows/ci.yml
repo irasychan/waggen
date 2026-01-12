@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Start sample app
+        run: |
+          npx serve sample-app -p 3000 &
+          sleep 3
+
+      - name: Run exploration
+        run: npx ts-node src/index.ts explore --url http://localhost:3000 --max-states 10
+
+      - name: Generate tests
+        run: npx ts-node src/index.ts generate-tests -f ./output/graph.json
+
+      - name: Run generated tests
+        run: |
+          cd generated-tests
+          npm init -y
+          npm install @playwright/test
+          npx playwright test --reporter=list
+        continue-on-error: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.node-version }}
+          path: |
+            output/
+            generated-tests/test-results/
+          retention-days: 7

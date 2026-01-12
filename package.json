@@ -1,0 +1,57 @@
+{
+  "name": "waggen",
+  "version": "0.1.0",
+  "description": "Web Application State Graph Generator - Map user journeys for test automation",
+  "main": "dist/index.js",
+  "bin": {
+    "waggen": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node src/index.ts",
+    "dev": "ts-node src/index.ts",
+    "serve-sample": "npx serve sample-app -p 3000",
+    "explore": "ts-node src/index.ts explore",
+    "generate-tests": "ts-node src/index.ts generate-tests",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "testing",
+    "automation",
+    "state-graph",
+    "user-journey",
+    "playwright",
+    "e2e",
+    "test-generation",
+    "web-crawler",
+    "ui-testing"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/irasychan/waggen.git"
+  },
+  "bugs": {
+    "url": "https://github.com/irasychan/waggen/issues"
+  },
+  "homepage": "https://github.com/irasychan/waggen#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "commander": "^12.0.0",
+    "playwright": "^1.40.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.0",
+    "serve": "^14.2.0"
+  }
+}
