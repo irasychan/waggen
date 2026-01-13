@@ -18,6 +18,10 @@ const MIME_TYPES: Record<string, string> = {
   '.json': 'application/json',
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
 };
 
 export class UIServer {
@@ -43,7 +47,7 @@ export class UIServer {
     this.server = http.createServer((req, res) => {
       const url = req.url || '/';
 
-      // API endpoint for graph data (alternative to embedded)
+      // API endpoint for graph data
       if (url === '/api/graph') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
@@ -53,9 +57,17 @@ export class UIServer {
         return;
       }
 
-      // Serve static files
-      let filePath = url === '/' ? '/index.html' : url;
-      filePath = path.join(staticDir, filePath);
+      // Serve static files from React build (dist directory)
+      const distDir = path.join(staticDir, 'dist');
+      let filePath: string;
+
+      // For assets (js, css, images), serve directly from dist/assets
+      if (url.startsWith('/assets/')) {
+        filePath = path.join(distDir, url);
+      } else {
+        // Try to serve the requested file, fall back to index.html for SPA routing
+        filePath = path.join(distDir, url === '/' ? 'index.html' : url);
+      }
 
       const ext = path.extname(filePath);
       const contentType = MIME_TYPES[ext] || 'text/plain';
@@ -63,8 +75,17 @@ export class UIServer {
       fs.readFile(filePath, (err, content) => {
         if (err) {
           if (err.code === 'ENOENT') {
-            res.writeHead(404);
-            res.end('Not Found');
+            // SPA fallback: serve index.html for client-side routing
+            const indexPath = path.join(distDir, 'index.html');
+            fs.readFile(indexPath, (indexErr, indexContent) => {
+              if (indexErr) {
+                res.writeHead(404);
+                res.end('Not Found');
+              } else {
+                res.writeHead(200, { 'Content-Type': 'text/html' });
+                res.end(indexContent);
+              }
+            });
           } else {
             res.writeHead(500);
             res.end('Server Error');
@@ -72,24 +93,8 @@ export class UIServer {
           return;
         }
 
-        // Inject graph data into HTML
-        if (ext === '.html') {
-          const cytoscapeData = GraphRenderer.toCytoscapeFormat(this.graphData!);
-          const injectedContent = content.toString()
-            .replace(
-              '"%%GRAPH_DATA%%"',
-              JSON.stringify(this.graphData)
-            )
-            .replace(
-              '"%%CYTOSCAPE_DATA%%"',
-              JSON.stringify(cytoscapeData)
-            );
-          res.writeHead(200, { 'Content-Type': contentType });
-          res.end(injectedContent);
-        } else {
-          res.writeHead(200, { 'Content-Type': contentType });
-          res.end(content);
-        }
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(content);
       });
     });
 

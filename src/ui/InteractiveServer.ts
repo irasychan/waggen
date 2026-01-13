@@ -28,6 +28,10 @@ const MIME_TYPES: Record<string, string> = {
   '.json': 'application/json',
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
 };
 
 export class InteractiveServer {
@@ -86,7 +90,7 @@ export class InteractiveServer {
     // Start listening
     return new Promise((resolve) => {
       this.httpServer!.listen(this.config.port, () => {
-        const url = `http://localhost:${this.config.port}/interactive.html`;
+        const url = `http://localhost:${this.config.port}`;
         console.log(`\nInteractive UI running at: ${url}\n`);
 
         if (this.config.openBrowser) {
@@ -414,9 +418,17 @@ export class InteractiveServer {
       return;
     }
 
-    // Serve static files
-    let filePath = url === '/' ? '/interactive.html' : url;
-    filePath = path.join(staticDir, filePath);
+    // Serve static files from React build (dist directory)
+    const distDir = path.join(staticDir, 'dist');
+    let filePath: string;
+
+    // For assets (js, css, images), serve directly from dist/assets
+    if (url.startsWith('/assets/')) {
+      filePath = path.join(distDir, url);
+    } else {
+      // Try to serve the requested file, fall back to index.html for SPA routing
+      filePath = path.join(distDir, url === '/' ? 'index.html' : url);
+    }
 
     const ext = path.extname(filePath);
     const contentType = MIME_TYPES[ext] || 'text/plain';
@@ -424,8 +436,17 @@ export class InteractiveServer {
     fs.readFile(filePath, (err, content) => {
       if (err) {
         if (err.code === 'ENOENT') {
-          res.writeHead(404);
-          res.end('Not Found');
+          // SPA fallback: serve index.html for client-side routing
+          const indexPath = path.join(distDir, 'index.html');
+          fs.readFile(indexPath, (indexErr, indexContent) => {
+            if (indexErr) {
+              res.writeHead(404);
+              res.end('Not Found');
+            } else {
+              res.writeHead(200, { 'Content-Type': 'text/html' });
+              res.end(indexContent);
+            }
+          });
         } else {
           res.writeHead(500);
           res.end('Server Error');

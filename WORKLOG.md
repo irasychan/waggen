@@ -1,5 +1,281 @@
 # Waggen Development Worklog
 
+## Session: 2026-01-14
+
+### Objective
+Modernize the UI to a Vite React app with shadcn/ui components and replace Cytoscape.js graph with D3.js hierarchical tree visualization.
+
+---
+
+## What We Built
+
+### Phase 6: React UI with D3 Tree Graph
+
+#### 1. Vite React TypeScript Setup (`src/ui/static/`)
+
+Replaced vanilla JavaScript UI with modern React stack:
+- **Vite** - Fast build tool and dev server
+- **React 19** - Latest React with TypeScript
+- **Tailwind CSS v4** - Utility-first CSS with new v4 architecture
+- **shadcn/ui** - Accessible component library built on Radix UI
+- **Zustand** - Lightweight state management
+- **D3.js** - Tree layout visualization
+
+#### 2. Project Structure
+
+```
+src/ui/static/
+├── src/
+│   ├── components/
+│   │   ├── ui/           # shadcn components (button, badge, card, tooltip, scroll-area)
+│   │   ├── layout/       # Header, ThreeColumnLayout
+│   │   ├── tree/         # StateTree, TreeNode (sidebar tree view)
+│   │   ├── graph/        # D3TreeGraph, GraphControls, UnexploredPlaceholders
+│   │   ├── actions/      # ActionPanel, ActionItem
+│   │   └── state/        # CurrentStateBar, StateDetails
+│   ├── hooks/
+│   │   ├── useWebSocket.ts      # WebSocket connection & message handling
+│   │   ├── useD3Tree.ts         # D3 tree layout & rendering
+│   │   └── useKeyboardShortcuts.ts
+│   ├── store/
+│   │   └── index.ts      # Zustand store for app state
+│   ├── lib/
+│   │   ├── utils.ts      # cn() utility for class merging
+│   │   └── graphTransform.ts    # StateGraph to D3 hierarchy transform
+│   ├── types/
+│   │   └── index.ts      # TypeScript interfaces mirrored from backend
+│   ├── App.tsx           # Main app component
+│   ├── main.tsx          # React entry point
+│   └── index.css         # Tailwind imports + CSS variables
+├── vite.config.ts        # Vite config with React, Tailwind, path aliases
+├── tsconfig.json         # TypeScript config for React
+├── components.json       # shadcn configuration
+└── package.json          # Dependencies
+```
+
+#### 3. Key Components
+
+| Component | Purpose |
+|-----------|---------|
+| `D3TreeGraph` | Main graph visualization using d3.tree() hierarchical layout |
+| `StateTree` | Left sidebar with collapsible tree view of states |
+| `ActionPanel` | Right panel showing available actions with execute/skip controls |
+| `CurrentStateBar` | Status bar showing current state info |
+| `Header` | Top bar with connection status, controls, and save button |
+
+#### 4. D3 Tree Features
+
+- **Hierarchical Layout** - States shown as tree from entry state
+- **Interactive Nodes** - Click to select, double-click to jump to state
+- **Visual Indicators** - Entry state (green), current state (yellow), selected (red border)
+- **Zoom & Pan** - D3-zoom with fit-to-view capability
+- **Directional Edges** - Arrow markers showing transition direction
+
+#### 5. State Management (Zustand)
+
+```typescript
+interface Store {
+  // Connection
+  connectionStatus: 'connecting' | 'connected' | 'disconnected';
+
+  // Data
+  session: ExplorationSession | null;
+  graphData: StateGraphData | null;
+  currentState: AppState | null;
+  availableActions: AvailableAction[];
+
+  // UI State
+  selectedNodeId: string | null;
+  executionStatus: 'idle' | 'executing';
+  shouldFitGraph: boolean;
+}
+```
+
+#### 6. WebSocket Integration
+
+Preserved existing WebSocket protocol with React hooks:
+- `connection_init` - Initial session and graph data
+- `state_update` - Current state and available actions
+- `graph_update` - New states/transitions discovered
+- `action_result` - Action execution feedback
+- `execute_action`, `skip_action`, `jump_to_state` - Client commands
+
+#### 7. Backend Updates
+
+Updated `InteractiveServer.ts` and `UIServer.ts`:
+- Serve React build from `dist/` directory
+- SPA fallback routing (serve index.html for client-side routes)
+- Updated MIME types for fonts and modern assets
+
+---
+
+## Technical Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| D3 Tree vs Force-Directed | Tree layout better represents state hierarchy from entry |
+| Zustand over Redux | Simpler API, less boilerplate for this scope |
+| Tailwind v4 | Latest version with Vite plugin, CSS-first config |
+| shadcn/ui | Copy-paste components, full customization control |
+
+---
+
+## Files Modified
+
+```
+src/ui/static/           # Complete rewrite (was vanilla JS, now React)
+src/ui/InteractiveServer.ts  # Updated to serve React build
+src/ui/UIServer.ts           # Updated to serve React build
+tsconfig.json                # Exclude React app from root build
+```
+
+---
+
+## Commands Reference
+
+```bash
+# Build React UI
+cd src/ui/static && npm run build
+
+# Build entire project (includes copying UI to dist)
+npm run build
+
+# Run interactive mode (opens React UI)
+npx ts-node src/index.ts interactive -u http://localhost:3000
+
+# Development (React UI with hot reload)
+cd src/ui/static && npm run dev
+```
+
+---
+
+*Last updated: 2026-01-14*
+
+---
+---
+
+## Session: 2026-01-13
+
+### Objective
+Add interactive exploration mode with real-time UI control and static graph visualization.
+
+---
+
+## What We Built
+
+### Phase 5: Interactive Exploration Mode
+
+#### New CLI Commands
+- `waggen interactive -u <url>` - Launch interactive exploration with headed browser and real-time UI
+- `waggen ui -f <graph.json>` - Serve interactive graph visualization for pre-generated state graphs
+
+#### 1. Interactive Explorer (`src/explorer/InteractiveExplorer.ts`)
+Step-by-step exploration mode with manual control:
+- No automatic action queue - user controls each step
+- Real-time element discovery and highlighting
+- Execute, skip, or jump between states
+- Headed browser with slowMo for visibility
+
+#### 2. Interactive Server (`src/ui/InteractiveServer.ts`)
+HTTP + WebSocket server for real-time communication:
+- Serves static UI files
+- WebSocket for bidirectional updates
+- Handles action execution requests
+- Broadcasts state changes to all connected clients
+
+#### 3. Session Management (`src/session/SessionManager.ts`)
+Save and resume exploration sessions:
+- Persist exploration state to JSON files
+- Resume from where you left off
+- Stored in `sessions/` directory
+
+#### 4. Graph Renderer (`src/ui/GraphRenderer.ts`)
+Transforms StateGraphData to Cytoscape.js format for visualization
+
+#### 5. Static UI Server (`src/ui/UIServer.ts`)
+Simple HTTP server for viewing pre-generated state graphs
+
+#### 6. Frontend UI (`src/ui/static/`)
+| File | Purpose |
+|------|---------|
+| `interactive.html` | Interactive exploration interface |
+| `interactive.js` | WebSocket client, state management, UI controls |
+| `interactive.css` | Styling for interactive mode |
+| `index.html` | Static graph viewer |
+| `app.js` | Cytoscape.js graph rendering |
+| `styles.css` | Graph viewer styling |
+
+#### 7. Type Definitions (`src/types/interactive.ts`)
+New interfaces for interactive mode:
+- `WSMessage`, `WSMessageType` - WebSocket protocol
+- `InteractiveSession` - Session persistence
+- `InteractiveServerConfig` - Server configuration
+- Various payload types for different message types
+
+### Key Features
+
+**Interactive Mode:**
+- Real-time element discovery with clickable action list
+- Execute actions one at a time with visual feedback
+- Skip unwanted actions
+- Jump to previously discovered states
+- Save/load sessions for later continuation
+- Cytoscape.js graph updates in real-time
+
+**Static Graph Viewer:**
+- Load and visualize any generated state graph
+- Interactive node/edge exploration
+- Pan and zoom controls
+
+---
+
+## Files Created
+
+```
+src/
+├── explorer/
+│   └── InteractiveExplorer.ts    # Step-by-step explorer
+├── session/
+│   └── SessionManager.ts         # Session persistence
+├── ui/
+│   ├── InteractiveServer.ts      # HTTP + WebSocket server
+│   ├── UIServer.ts               # Static graph viewer server
+│   ├── GraphRenderer.ts          # Cytoscape.js data transformer
+│   └── static/
+│       ├── interactive.html      # Interactive UI
+│       ├── interactive.js        # WebSocket client
+│       ├── interactive.css       # Interactive styling
+│       ├── index.html            # Graph viewer
+│       ├── app.js                # Graph rendering
+│       └── styles.css            # Viewer styling
+└── types/
+    └── interactive.ts            # New type definitions
+
+CLAUDE.md                         # AI assistant guidance
+```
+
+---
+
+## New Commands Reference
+
+```bash
+# Interactive exploration (opens browser + UI)
+npx ts-node src/index.ts interactive -u http://localhost:3000
+
+# View pre-generated graph
+npx ts-node src/index.ts ui -f ./output/graph.json
+
+# Resume a saved session
+npx ts-node src/index.ts interactive -u http://localhost:3000 --session sessions/session-xxx.json
+```
+
+---
+
+*Last updated: 2026-01-13*
+
+---
+---
+
 ## Session: 2026-01-12
 
 ### Objective
